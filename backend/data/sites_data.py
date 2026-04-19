@@ -1,7 +1,5 @@
-"""
-Candidate data center site data — 7 locations across ERCOT & WECC.
-Economics based on 2019-2024 historical LMP and gas pricing analysis.
-"""
+import os
+import json
 
 SITES = [
     {
@@ -15,20 +13,24 @@ SITES = [
         "zone": "ERCOT West",
         "settlement_point": "LZ_WEST",
         "gas_hub": "Waha",
-        "avg_spread": 31.4,
-        "positive_hours_pct": 74,
-        "volatility": "Low",
-        "composite_score": 91,
-        "monthly_spreads": [28, 25, 22, 30, 35, 42, 48, 52, 44, 32, 26, 24],
-        "regime_breakdown": {"normal": 52, "heat_dome": 18, "wind_glut": 15, "scarcity": 8, "oversupply": 5, "winter_storm": 2},
-        "best_month": "August 2023 — Avg spread +$52/MWh during extended heat dome",
-        "worst_month": "March 2023 — Wind oversupply pushed LMP below gen cost for 62% of hours",
-        "insight": "Midland benefits from Waha basis discounts and sits in ERCOT's West zone, which experiences heat dome conditions 3x more frequently than the Houston Hub.",
-        "pipeline_hub": {"lat": 31.38, "lng": -103.15, "name": "Waha Hub"},
+        "insight": "Midland benefits from Waha basis discounts and sits in ERCOT's West zone.",
+    },
+    {
+        "id": "houston",
+        "rank": 2,
+        "name": "Houston",
+        "state": "TX",
+        "label": "Houston TX",
+        "lat": 29.7604,
+        "lng": -95.3698,
+        "zone": "ERCOT Houston",
+        "settlement_point": "LZ_HOUSTON",
+        "gas_hub": "Katy",
+        "insight": "Houston faces immense summer cooling loads and volatile coastal weather, resulting in massive peak spreads.",
     },
     {
         "id": "odessa",
-        "rank": 2,
+        "rank": 3,
         "name": "Odessa",
         "state": "TX",
         "label": "Odessa TX",
@@ -37,20 +39,11 @@ SITES = [
         "zone": "ERCOT West",
         "settlement_point": "LZ_WEST",
         "gas_hub": "Waha",
-        "avg_spread": 28.2,
-        "positive_hours_pct": 71,
-        "volatility": "Low",
-        "composite_score": 86,
-        "monthly_spreads": [24, 22, 19, 26, 31, 38, 44, 48, 40, 29, 23, 21],
-        "regime_breakdown": {"normal": 54, "heat_dome": 16, "wind_glut": 16, "scarcity": 7, "oversupply": 5, "winter_storm": 2},
-        "best_month": "August 2023 — Same West zone benefits as Midland, +$48/MWh avg",
-        "worst_month": "April 2024 — Extended wind surplus depressed prices",
-        "insight": "Odessa shares Midland's Waha gas advantage but slightly lower LMP exposure due to local wind generation patterns.",
-        "pipeline_hub": {"lat": 31.38, "lng": -103.15, "name": "Waha Hub"},
+        "insight": "Odessa shares Midland's Waha gas advantage with high reliability.",
     },
     {
         "id": "abilene",
-        "rank": 3,
+        "rank": 4,
         "name": "Abilene",
         "state": "TX",
         "label": "Abilene TX",
@@ -59,38 +52,7 @@ SITES = [
         "zone": "ERCOT West",
         "settlement_point": "LZ_WEST",
         "gas_hub": "Waha",
-        "avg_spread": 22.1,
-        "positive_hours_pct": 66,
-        "volatility": "Medium",
-        "composite_score": 74,
-        "monthly_spreads": [18, 16, 14, 20, 25, 32, 36, 38, 30, 22, 17, 15],
-        "regime_breakdown": {"normal": 58, "heat_dome": 12, "wind_glut": 18, "scarcity": 5, "oversupply": 5, "winter_storm": 2},
-        "best_month": "July 2023 — Heat dome pushed spreads to +$36/MWh",
-        "worst_month": "February 2024 — Mild winter reduced grid stress",
-        "insight": "Abilene sits at the eastern edge of the West zone. More wind exposure creates volatility but still benefits from Waha gas pricing.",
-        "pipeline_hub": {"lat": 31.38, "lng": -103.15, "name": "Waha Hub"},
-    },
-    {
-        "id": "houston",
-        "rank": 4,
-        "name": "Houston",
-        "state": "TX",
-        "label": "Houston TX",
-        "lat": 29.7604,
-        "lng": -95.3698,
-        "zone": "ERCOT Houston",
-        "settlement_point": "LZ_HOUSTON",
-        "gas_hub": "Henry Hub",
-        "avg_spread": 18.3,
-        "positive_hours_pct": 61,
-        "volatility": "High",
-        "composite_score": 63,
-        "monthly_spreads": [12, 10, 8, 15, 20, 28, 32, 34, 26, 18, 13, 11],
-        "regime_breakdown": {"normal": 62, "heat_dome": 10, "wind_glut": 8, "scarcity": 10, "oversupply": 6, "winter_storm": 4},
-        "best_month": "August 2023 — Coastal heat drove LMP spikes, +$34/MWh",
-        "worst_month": "November 2023 — Mild temps, high gas prices compressed spread",
-        "insight": "Houston has strong grid connectivity but pays Henry Hub gas prices — no Waha discount. Higher LMP volatility from coastal weather events.",
-        "pipeline_hub": {"lat": 29.95, "lng": -93.85, "name": "Henry Hub (LA)"},
+        "insight": "Abilene sits at the eastern edge of the West zone with high wind exposure.",
     },
     {
         "id": "dallas",
@@ -102,17 +64,8 @@ SITES = [
         "lng": -96.7970,
         "zone": "ERCOT North",
         "settlement_point": "LZ_NORTH",
-        "gas_hub": "Henry Hub",
-        "avg_spread": 14.2,
-        "positive_hours_pct": 58,
-        "volatility": "High",
-        "composite_score": 57,
-        "monthly_spreads": [9, 7, 6, 12, 16, 22, 26, 28, 20, 14, 10, 8],
-        "regime_breakdown": {"normal": 64, "heat_dome": 8, "wind_glut": 10, "scarcity": 8, "oversupply": 7, "winter_storm": 3},
-        "best_month": "July 2023 — DFW heat dome, +$28/MWh avg spread",
-        "worst_month": "March 2024 — Spring shoulder season with low demand",
-        "insight": "Dallas sees lower average spreads due to Henry Hub gas pricing and more moderate demand patterns compared to West Texas.",
-        "pipeline_hub": {"lat": 29.95, "lng": -93.85, "name": "Henry Hub (LA)"},
+        "gas_hub": "Katy",
+        "insight": "Dallas acts as the major load center for North Texas with relatively stable pricing.",
     },
     {
         "id": "san_antonio",
@@ -124,48 +77,128 @@ SITES = [
         "lng": -98.4936,
         "zone": "ERCOT South",
         "settlement_point": "LZ_SOUTH",
-        "gas_hub": "Henry Hub",
-        "avg_spread": 11.4,
-        "positive_hours_pct": 55,
-        "volatility": "Medium",
-        "composite_score": 51,
-        "monthly_spreads": [7, 5, 4, 9, 13, 18, 22, 24, 16, 11, 8, 6],
-        "regime_breakdown": {"normal": 66, "heat_dome": 8, "wind_glut": 12, "scarcity": 6, "oversupply": 5, "winter_storm": 3},
-        "best_month": "August 2023 — South zone heat event, +$24/MWh",
-        "worst_month": "January 2024 — Mild winter, low demand",
-        "insight": "San Antonio has moderate economics but benefits from growing solar penetration that occasionally creates negative pricing windows for import.",
-        "pipeline_hub": {"lat": 29.95, "lng": -93.85, "name": "Henry Hub (LA)"},
+        "gas_hub": "Katy",
+        "insight": "San Antonio borders wind-heavy South Texas but faces rapid population growth demand.",
+    },
+    {
+        "id": "chandler",
+        "rank": 7,
+        "name": "Chandler",
+        "state": "AZ",
+        "label": "Chandler AZ",
+        "lat": 33.3062,
+        "lng": -111.8413,
+        "zone": "WECC Southwest",
+        "settlement_point": "PALOVRDE_ASR-APND",
+        "gas_hub": "SoCal Border",
+        "insight": "Chandler utilizes the massive Palo Verde hub serving major Arizona data center clusters.",
     },
     {
         "id": "tucson",
-        "rank": 7,
+        "rank": 8,
         "name": "Tucson",
         "state": "AZ",
         "label": "Tucson AZ",
         "lat": 32.2226,
         "lng": -110.9747,
         "zone": "WECC Southwest",
-        "settlement_point": "PALO_VERDE",
+        "settlement_point": "PALOVRDE_ASR-APND",
         "gas_hub": "SoCal Border",
-        "avg_spread": 9.1,
-        "positive_hours_pct": 52,
-        "volatility": "Low",
-        "composite_score": 44,
-        "monthly_spreads": [5, 4, 3, 7, 10, 14, 18, 19, 13, 8, 6, 4],
-        "regime_breakdown": {"normal": 70, "heat_dome": 10, "wind_glut": 4, "scarcity": 6, "oversupply": 8, "winter_storm": 2},
-        "best_month": "July 2023 — Desert heat pushed Palo Verde LMP high, +$19/MWh",
-        "worst_month": "March 2024 — Solar oversupply in WECC drove prices near zero",
-        "insight": "Tucson operates in WECC, not ERCOT. Lower overall spread but extremely stable — lowest volatility of all 7 sites. Good for risk-averse operators.",
-        "pipeline_hub": {"lat": 32.68, "lng": -115.49, "name": "SoCal Border"},
+        "insight": "Tucson tracks Palo Verde with high volatility during evening peak ramps.",
     },
+    {
+        "id": "las_vegas",
+        "rank": 9,
+        "name": "Las Vegas",
+        "state": "NV",
+        "label": "Las Vegas NV",
+        "lat": 36.1716,
+        "lng": -115.1391,
+        "zone": "WECC Mead",
+        "settlement_point": "PALOVRDE_ASR-APND",
+        "gas_hub": "SoCal Border",
+        "insight": "Las Vegas connects through the Mead interchange to Palo Verde, tracking Southwest desert pricing.",
+    },
+    {
+        "id": "los_lunas",
+        "rank": 10,
+        "name": "Los Lunas",
+        "state": "NM",
+        "label": "Los Lunas NM",
+        "lat": 34.8062,
+        "lng": -106.7299,
+        "zone": "WECC Southwest",
+        "settlement_point": "PALOVRDE_ASR-APND",
+        "gas_hub": "SoCal Border",
+        "insight": "Los Lunas represents the rising New Mexico data center corridor connected via WECC lines.",
+    },
+    {
+        "id": "rio_rancho",
+        "rank": 11,
+        "name": "Rio Rancho",
+        "state": "NM",
+        "label": "Rio Rancho NM",
+        "lat": 35.2328,
+        "lng": -106.6630,
+        "zone": "WECC Southwest",
+        "settlement_point": "PALOVRDE_ASR-APND",
+        "gas_hub": "SoCal Border",
+        "insight": "Rio Rancho serves major technology hubs tracking the greater Southwest power dynamics.",
+    },
+    {
+        "id": "los_angeles",
+        "rank": 12,
+        "name": "Los Angeles",
+        "state": "CA",
+        "label": "Los Angeles CA",
+        "lat": 34.0522,
+        "lng": -118.2437,
+        "zone": "CAISO SP15",
+        "settlement_point": "TH_SP15_GEN-APND",
+        "gas_hub": "SoCal Citygate",
+        "insight": "Los Angeles benefits from SP15 Hub liquidity but faces high SoCal gas costs.",
+    },
+    {
+        "id": "bakersfield",
+        "rank": 13,
+        "name": "Bakersfield",
+        "state": "CA",
+        "label": "Bakersfield CA",
+        "lat": 35.3733,
+        "lng": -119.0187,
+        "zone": "CAISO ZP26",
+        "settlement_point": "TH_ZP26_GEN-APND",
+        "gas_hub": "Kern River",
+        "insight": "Bakersfield (ZP26) is a solar-heavy zone with frequent afternoon oversupply.",
+    }
 ]
 
+# ── Overlay Real Metrics from site_rankings.json ──
+RANKINGS_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "site_rankings.json")
+if os.path.exists(RANKINGS_PATH):
+    try:
+        with open(RANKINGS_PATH, "r") as f:
+            rankings = json.load(f)
+            for site in SITES:
+                real_data = rankings.get(site["id"])
+                if real_data:
+                    site.update({
+                        "rank": real_data.get("rank", site.get("rank")),
+                        "avg_spread": real_data.get("avg_spread", site.get("avg_spread")),
+                        "positive_hours_pct": real_data.get("positive_hours_pct", site.get("positive_hours_pct")),
+                        "volatility": real_data.get("volatility", site.get("volatility")),
+                        "composite_score": real_data.get("composite_score", site.get("composite_score")),
+                        "monthly_spreads": real_data.get("monthly_spreads", []),
+                        "regime_breakdown": real_data.get("regime_breakdown", {}),
+                        "insight": f"REAL DATA VERSION: {site.get('insight', '')}"
+                    })
+    except Exception as e:
+        print(f"⚠️ Failed to load real site rankings: {e}")
+
 def get_all_sites():
-    """Return all sites sorted by rank."""
-    return sorted(SITES, key=lambda s: s["rank"])
+    return sorted(SITES, key=lambda s: s.get("composite_score", 0), reverse=True)
 
 def get_site_by_id(site_id: str):
-    """Return a single site by ID."""
     for site in SITES:
         if site["id"] == site_id:
             return site

@@ -1,20 +1,24 @@
 import { useState, useEffect, useRef } from 'react'
 
-const SITES = [
-  { id: 'midland', label: 'Midland TX', zone: 'ERCOT West', score: 91 },
-  { id: 'odessa', label: 'Odessa TX', zone: 'ERCOT West', score: 86 },
-  { id: 'abilene', label: 'Abilene TX', zone: 'ERCOT West', score: 74 },
-  { id: 'houston', label: 'Houston TX', zone: 'ERCOT Houston', score: 63 },
-  { id: 'dallas', label: 'Dallas TX', zone: 'ERCOT North', score: 57 },
-  { id: 'san_antonio', label: 'San Antonio TX', zone: 'ERCOT South', score: 51 },
-  { id: 'tucson', label: 'Tucson AZ', zone: 'WECC Southwest', score: 44 },
-]
-
-export default function SiteSelector({ selectedSiteId, onSiteChange, disabled }) {
+export default function SiteSelector({ selectedSiteId, onSiteChange, disabled, apiBase }) {
   const [open, setOpen] = useState(false)
+  const [sites, setSites] = useState([])
   const ref = useRef(null)
 
-  const selected = SITES.find(s => s.id === selectedSiteId) || SITES[0]
+  useEffect(() => {
+    fetch(`${apiBase}/api/sites`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.sites) {
+          // Sort dynamically to match rest of UI (highest score first)
+          const sorted = data.sites.sort((a,b) => b.composite_score - a.composite_score)
+          setSites(sorted)
+        }
+      })
+      .catch(err => console.error('SiteSelector fetch error:', err))
+  }, [apiBase])
+
+  const selected = sites.find(s => s.id === selectedSiteId) || { id: selectedSiteId, label: 'Loading...', zone: '', composite_score: 0 }
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -77,7 +81,7 @@ export default function SiteSelector({ selectedSiteId, onSiteChange, disabled })
           }}>
             Select Dispatch Location
           </div>
-          {SITES.map(site => (
+          {sites.map(site => (
             <button
               key={site.id}
               onClick={() => { onSiteChange(site.id); setOpen(false) }}
@@ -109,9 +113,9 @@ export default function SiteSelector({ selectedSiteId, onSiteChange, disabled })
                 fontFamily: 'var(--font-mono)',
                 fontSize: '11px',
                 fontWeight: 700,
-                color: site.score >= 80 ? '#10B981' : site.score >= 60 ? '#F97316' : '#EF4444',
+                color: site.composite_score >= 80 ? '#10B981' : site.composite_score >= 60 ? '#F97316' : '#EF4444',
               }}>
-                {site.score}
+                {site.composite_score}
               </div>
             </button>
           ))}

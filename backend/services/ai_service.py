@@ -1,11 +1,21 @@
+import time
 from openai import OpenAI
 from backend.config import OPENAI_API_KEY
 import json
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+# Circuit breaker for quota errors
+_last_quota_error_time = 0
+QUOTA_ERROR_COOLDOWN = 600 # 10 minutes
+
 def generate_operator_briefing(lmp: float, gas_price: float, spread: float, regime_name: str, confidence: int, forecast_summary: str) -> str:
     """Generate a real-time operator briefing using OpenAI GPT-4o."""
+    global _last_quota_error_time
+
+    # Check circuit breaker
+    if time.time() - _last_quota_error_time < QUOTA_ERROR_COOLDOWN:
+        return _fallback_briefing(spread, regime_name, confidence, forecast_summary)
     prompt = f"""
 You are an expert energy dispatch AI acting as the intelligence behind a Bloomberg Terminal-style grid operator dashboard.
 Your job is to read the current real-time market data and write a concise, plain-English 3-4 sentence directive to a data center operator managing a Behind-The-Meter (BTM) gas generator.
@@ -36,6 +46,12 @@ RULES:
         return response.choices[0].message.content.strip()
     except Exception as e:
         print(f"OpenAI API Error: {e}")
+        
+        # If it's a quota error, trigger cooldown
+        if "insufficient_quota" in str(e).lower() or "429" in str(e):
+            _last_quota_error_time = time.time()
+            print("🚀 OpenAI Quota exceeded. Entering 10-minute cooldown.")
+
         # Fallback to local template if API fails
         return _fallback_briefing(spread, regime_name, confidence, forecast_summary)
 

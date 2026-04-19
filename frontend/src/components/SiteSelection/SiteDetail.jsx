@@ -13,7 +13,7 @@ const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'S
 
 export default function SiteDetail({ site }) {
   // Build sparkline data
-  const sparklineData = site.monthly_spreads.map((val, i) => ({
+  const sparklineData = (site.monthly_spreads || []).map((val, i) => ({
     month: MONTH_LABELS[i],
     spread: val,
   }))

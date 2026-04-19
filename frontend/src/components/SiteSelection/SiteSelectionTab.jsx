@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react'
 import SiteMap from './SiteMap'
 import SiteTable from './SiteTable'
 import SiteDetail from './SiteDetail'
-import WhyMidlandCard from './WhyMidlandCard'
+import TopSiteCard from './TopSiteCard'
 
 export default function SiteSelectionTab({ apiBase }) {
   const [sites, setSites] = useState([])
   const [selectedSite, setSelectedSite] = useState(null)
-  const [sortKey, setSortKey] = useState('rank')
-  const [sortAsc, setSortAsc] = useState(true)
+  const [sortKey, setSortKey] = useState('composite_score')
+  const [sortAsc, setSortAsc] = useState(false)
 
   useEffect(() => {
     fetch(`${apiBase}/api/sites`)
@@ -63,7 +63,7 @@ export default function SiteSelectionTab({ apiBase }) {
             sortAsc={sortAsc}
           />
           {selectedSite && <SiteDetail site={selectedSite} />}
-          <WhyMidlandCard />
+          <TopSiteCard topSite={sortedSites[0]} />
         </div>
       </div>
     </div>

@@ -20,19 +20,29 @@ def _get_site_context(site_id: str):
         site = get_all_sites()[0]  # Default to Midland
 
     # Map gas hub to price key
-    gas_key = "waha" if site["gas_hub"] == "Waha" else "henry_hub"
+    # Map gas hub to price key
+    gh = site.get("gas_hub", "Henry Hub")
+    if gh == "Waha":
+        gas_key = "waha"
+    elif gh == "SoCal Border":
+        gas_key = "socal"
+    else:
+        gas_key = "henry_hub"
 
     return {
         "site": site,
         "settlement_point": site["settlement_point"],
         "location": site["label"],
-        "gas_hub": site["gas_hub"],
+        "gas_hub": gh,
         "gas_key": gas_key,
+        "lat": site["lat"],
+        "lng": site["lng"],
+        "site_id": site["id"]
     }
 
 
 @router.get("/current")
-def get_current_dispatch(site_id: str = Query(default="midland", description="Site ID")):
+async def get_current_dispatch(site_id: str = Query(default="midland", description="Site ID")):
     """
     Get current dispatch status — the hero data for the spread ticker.
     Returns: current spread, LMP, gas price, gen cost, regime, recommendation.
@@ -40,11 +50,11 @@ def get_current_dispatch(site_id: str = Query(default="midland", description="Si
     ctx = _get_site_context(site_id)
     site = ctx["site"]
 
-    lmp_data = get_current_lmp(ctx["settlement_point"])
+    lmp_data = await get_current_lmp(ctx["settlement_point"], site_id=ctx["site_id"], lat=ctx["lat"], lng=ctx["lng"])
     gas_data = get_gas_prices()
 
     lmp = lmp_data["lmp"]
-    gas_price = gas_data.get(ctx["gas_key"], gas_data["waha"])
+    gas_price = gas_data.get(ctx["gas_key"], gas_data["henry_hub"])
     gen_cost = calculate_gen_cost(gas_price)
     spread = calculate_spread(lmp, gas_price)
     decision = dispatch_decision(spread)
@@ -76,22 +86,29 @@ def get_current_dispatch(site_id: str = Query(default="midland", description="Si
         "facility_mw": FACILITY_SIZE_MW,
         "timestamp": lmp_data["timestamp"],
         "history_24h": history,
+        "weather": lmp_data.get("weather", {"temp_f": 75, "wind_speed": 10})
     }
 
 
 @router.get("/forecast")
-def get_forecast(site_id: str = Query(default="midland", description="Site ID")):
+async def get_forecast(site_id: str = Query(default="midland", description="Site ID")):
     """Get 72-hour spread forecast with p10/p50/p90 confidence bands."""
     ctx = _get_site_context(site_id)
 
-    lmp_data = get_current_lmp(ctx["settlement_point"])
+    lmp_data = await get_current_lmp(ctx["settlement_point"], site_id=ctx["site_id"], lat=ctx["lat"], lng=ctx["lng"])
     gas_data = get_gas_prices()
-    gas_price = gas_data.get(ctx["gas_key"], gas_data["waha"])
+    gas_price = gas_data.get(ctx["gas_key"], gas_data["henry_hub"])
+    
+    weather = lmp_data.get("weather", {"temp_f": 75, "wind_speed": 10})
 
     forecast = generate_forecast(
         current_lmp=lmp_data["lmp"],
         current_gas_price=gas_price,
         regime=lmp_data["regime"],
+        temp_f=weather["temp_f"],
+        wind_speed=weather["wind_speed"],
+        site_id=ctx["site_id"],
+        current_spread=lmp_data["lmp"] - calculate_gen_cost(gas_price)
     )
 
     return {
@@ -103,18 +120,23 @@ def get_forecast(site_id: str = Query(default="midland", description="Site ID"))
 
 
 @router.get("/schedule")
-def get_dispatch_schedule(site_id: str = Query(default="midland", description="Site ID")):
+async def get_dispatch_schedule(site_id: str = Query(default="midland", description="Site ID")):
     """Get optimal 72-hour dispatch schedule with savings calculation."""
     ctx = _get_site_context(site_id)
 
-    lmp_data = get_current_lmp(ctx["settlement_point"])
+    lmp_data = await get_current_lmp(ctx["settlement_point"], site_id=ctx["site_id"], lat=ctx["lat"], lng=ctx["lng"])
     gas_data = get_gas_prices()
-    gas_price = gas_data.get(ctx["gas_key"], gas_data["waha"])
+    gas_price = gas_data.get(ctx["gas_key"], gas_data["henry_hub"])
+    weather = lmp_data.get("weather", {"temp_f": 75, "wind_speed": 10})
 
     forecast = generate_forecast(
         current_lmp=lmp_data["lmp"],
         current_gas_price=gas_price,
         regime=lmp_data["regime"],
+        temp_f=weather["temp_f"],
+        wind_speed=weather["wind_speed"],
+        site_id=ctx["site_id"],
+        current_spread=lmp_data["lmp"] - calculate_gen_cost(gas_price)
     )
 
     schedule = []
@@ -136,23 +158,31 @@ def get_dispatch_schedule(site_id: str = Query(default="midland", description="S
 
 
 @router.get("/briefing")
-def get_operator_briefing(site_id: str = Query(default="midland", description="Site ID")):
+async def get_operator_briefing(site_id: str = Query(default="midland", description="Site ID")):
     """
     Generate AI operator briefing using OpenAI GPT-4o.
-    Falls back to template-based briefing if API is unavailable.
     """
     ctx = _get_site_context(site_id)
 
-    lmp_data = get_current_lmp(ctx["settlement_point"])
+    lmp_data = await get_current_lmp(ctx["settlement_point"], site_id=ctx["site_id"], lat=ctx["lat"], lng=ctx["lng"])
     gas_data = get_gas_prices()
-    gas_price = gas_data.get(ctx["gas_key"], gas_data["waha"])
-    spread = calculate_spread(lmp_data["lmp"], gas_price)
+    gas_price = gas_data.get(ctx["gas_key"], gas_data["henry_hub"])
+    weather = lmp_data.get("weather", {"temp_f": 75, "wind_speed": 10})
+    
+    spread = lmp_data["lmp"] - calculate_gen_cost(gas_price)
     regime = get_regime(lmp_data["regime"])
     forecast = generate_forecast(
         current_lmp=lmp_data["lmp"],
         current_gas_price=gas_price,
         regime=lmp_data["regime"],
+        temp_f=weather["temp_f"],
+        wind_speed=weather["wind_speed"],
+        site_id=ctx["site_id"],
+        current_spread=spread
     )
+
+    # Find import windows in forecast
+    # ... (skipping unchanged code)
 
     # Find import windows in forecast
     import_windows = []

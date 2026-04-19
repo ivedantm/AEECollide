@@ -33,14 +33,14 @@ export default function SiteTable({ sites, selectedSite, onSelectSite, onSort, s
           </tr>
         </thead>
         <tbody>
-          {sites.map(site => (
+          {sites.map((site, index) => (
             <tr
               key={site.id}
-              className={`${site.rank === 1 ? 'rank-1' : ''} ${selectedSite && selectedSite.id === site.id ? 'selected' : ''}`}
+              className={`${index === 0 ? 'rank-1' : ''} ${selectedSite && selectedSite.id === site.id ? 'selected' : ''}`}
               onClick={() => onSelectSite(site)}
             >
-              <td>{site.rank}</td>
-              <td style={{ fontWeight: 500, color: site.rank === 1 ? '#F9FAFB' : undefined }}>
+              <td>{index + 1}</td>
+              <td style={{ fontWeight: 500, color: index === 0 ? '#F9FAFB' : undefined }}>
                 {site.label}
               </td>
               <td className="spread-positive">+${site.avg_spread}/MWh</td>
