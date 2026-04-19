@@ -5,14 +5,19 @@ Core BTM economics: spread = LMP - (gas_price × heat_rate + O&M)
 from backend.config import HEAT_RATE, O_AND_M_COST, FACILITY_SIZE_MW
 
 
-def calculate_gen_cost(gas_price: float, heat_rate: float = HEAT_RATE, om_cost: float = O_AND_M_COST) -> float:
-    """Calculate the cost to generate 1 MWh from BTM gas generator."""
-    return gas_price * heat_rate + om_cost
+def calculate_gen_cost(gas_price: float, heat_rate: float = HEAT_RATE, om_cost: float = O_AND_M_COST, temp_f: float = None) -> float:
+    """Calculate the cost to generate 1 MWh from BTM gas generator, adjusted for ambient thermodynamics."""
+    effective_heat_rate = heat_rate
+    if temp_f is not None and temp_f > 59.0:
+        # Real-world physics: turbine efficiency degrades ~0.15% per degree F above 59F
+        effective_heat_rate = heat_rate * (1.0 + ((temp_f - 59.0) * 0.0015))
+        
+    return gas_price * effective_heat_rate + om_cost
 
 
-def calculate_spread(lmp: float, gas_price: float, heat_rate: float = HEAT_RATE, om_cost: float = O_AND_M_COST) -> float:
-    """Calculate the BTM generation spread (LMP - gen cost)."""
-    gen_cost = calculate_gen_cost(gas_price, heat_rate, om_cost)
+def calculate_spread(lmp: float, gas_price: float, heat_rate: float = HEAT_RATE, om_cost: float = O_AND_M_COST, temp_f: float = None) -> float:
+    """Calculate the BTM generation spread (LMP - gen cost) utilizing ambient temperature parameters."""
+    gen_cost = calculate_gen_cost(gas_price, heat_rate, om_cost, temp_f)
     return lmp - gen_cost
 
 

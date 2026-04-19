@@ -55,8 +55,9 @@ async def get_current_dispatch(site_id: str = Query(default="midland", descripti
 
     lmp = lmp_data["lmp"]
     gas_price = gas_data.get(ctx["gas_key"], gas_data["henry_hub"])
-    gen_cost = calculate_gen_cost(gas_price)
-    spread = calculate_spread(lmp, gas_price)
+    temp_f = lmp_data.get("weather", {}).get("temp_f", 75)
+    gen_cost = calculate_gen_cost(gas_price, temp_f=temp_f)
+    spread = calculate_spread(lmp, gas_price, temp_f=temp_f)
     decision = dispatch_decision(spread)
     regime = get_regime(lmp_data["regime"])
 
@@ -108,7 +109,7 @@ async def get_forecast(site_id: str = Query(default="midland", description="Site
         temp_f=weather["temp_f"],
         wind_speed=weather["wind_speed"],
         site_id=ctx["site_id"],
-        current_spread=lmp_data["lmp"] - calculate_gen_cost(gas_price)
+        current_spread=lmp_data["lmp"] - calculate_gen_cost(gas_price, temp_f=weather["temp_f"])
     )
 
     return {
@@ -136,7 +137,7 @@ async def get_dispatch_schedule(site_id: str = Query(default="midland", descript
         temp_f=weather["temp_f"],
         wind_speed=weather["wind_speed"],
         site_id=ctx["site_id"],
-        current_spread=lmp_data["lmp"] - calculate_gen_cost(gas_price)
+        current_spread=lmp_data["lmp"] - calculate_gen_cost(gas_price, temp_f=weather["temp_f"])
     )
 
     schedule = []
@@ -169,7 +170,7 @@ async def get_operator_briefing(site_id: str = Query(default="midland", descript
     gas_price = gas_data.get(ctx["gas_key"], gas_data["henry_hub"])
     weather = lmp_data.get("weather", {"temp_f": 75, "wind_speed": 10})
     
-    spread = lmp_data["lmp"] - calculate_gen_cost(gas_price)
+    spread = lmp_data["lmp"] - calculate_gen_cost(gas_price, temp_f=weather["temp_f"])
     regime = get_regime(lmp_data["regime"])
     forecast = generate_forecast(
         current_lmp=lmp_data["lmp"],
